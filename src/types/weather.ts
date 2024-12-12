@@ -5,7 +5,7 @@ export interface WeatherData {
   precipitation: string;
   windSpeed: number;
   windDirection: string;
-  condition?: string;
+  condition: string;
 }
 
 export interface ForecastDay {
@@ -13,6 +13,12 @@ export interface ForecastDay {
   dayName: string;
   temperature: number;
   minTemp: number;
+  condition: string;
+}
+
+export interface HourlyForecast {
+  time: string;
+  temperature: number;
   condition: string;
 }
 

@@ -1,19 +1,24 @@
 import React from 'react';
-import { Sun, Cloud, CloudRain, CloudSnow, CloudSun } from 'lucide-react';
+import { Sun, Cloud, CloudRain, Snowflake } from 'lucide-react';
 
 interface WeatherIconProps {
   condition: string;
   className?: string;
 }
 
-export const WeatherIcon: React.FC<WeatherIconProps> = ({ condition, className = 'w-8 h-8' }) => {
-  const icons = {
-    sunny: <Sun className={className} />,
-    cloudy: <Cloud className={className} />,
-    rain: <CloudRain className={className} />,
-    snow: <CloudSnow className={className} />,
-    'partly-cloudy': <CloudSun className={className} />,
-  };
+export const WeatherIcon: React.FC<WeatherIconProps> = ({ condition, className }) => {
+  const lowerCaseCondition = condition.toLowerCase();
 
-  return icons[condition as keyof typeof icons] || <Cloud className={className} />;
+  switch (lowerCaseCondition) {
+    case 'солнечно':
+      return <Sun className={className} />;
+    case 'облачно':
+      return <Cloud className={className} />;
+    case 'дождь':
+      return <CloudRain className={className} />;
+    case 'снег':
+      return <Snowflake className={className} />;
+    default:
+      return <Sun className={className} />;
+  }
 };

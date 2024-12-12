@@ -1,17 +1,19 @@
 import React from 'react';
-import { ForecastDay } from '../types/weather';
-import { ForecastCard } from './ForecastCard';
 
-interface WeatherForecastProps {
-  forecast: ForecastDay[];
-}
-
-export const WeatherForecast: React.FC<WeatherForecastProps> = ({ forecast }) => {
+export const WeatherForecast = ({ forecast }) => {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-      {forecast.map((day) => (
-        <ForecastCard key={day.date} forecast={day} />
-      ))}
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-blue-900 text-center">Прогноз на неделю</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {forecast.map((day, index) => (
+          <div key={index} className="bg-blue-50 p-4 rounded-lg shadow text-center">
+            <p className="text-blue-900 font-semibold">{day.dayName}</p>
+            <p className="text-blue-700">{day.date}</p>
+            <p className="text-2xl font-bold text-blue-800">{day.temperature}°C</p>
+            <p className="text-blue-600">{day.condition}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

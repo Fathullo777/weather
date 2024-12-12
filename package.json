@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://github.com/Fathullo777/weather.git",
+  "homepage": "",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,9 +14,10 @@
   },
   "dependencies": {
     "leaflet": "^1.9.4",
-    "lucide-react": "^0.344.0",
+    "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-icons": "^5.4.0",
     "react-leaflet": "^4.2.1",
     "react-toastify": "^10.0.6"
   },

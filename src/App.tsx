@@ -3,21 +3,21 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Sun } from 'lucide-react';
 import { CurrentWeather } from './components/CurrentWeather';
 import { WeatherForecast } from './components/WeatherForecast';
-import { CitySelector } from './components/CitySelector';
-import { WeatherData, ForecastDay, City } from './types/weather';
+import { HourlyWeather } from './components/HourlyWeather';
 import { getDynamicCondition } from './utils/weather';
-import { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 function App() {
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
-  const [forecast, setForecast] = useState<ForecastDay[]>([]);
-  const [city, setCity] = useState<City | null>(null);
-  const [position, setPosition] = useState<LatLngExpression | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [forecast, setForecast] = useState([]);
+  const [hourlyForecast, setHourlyForecast] = useState([]);
+  const [city, setCity] = useState(null);
+  const [position, setPosition] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [cityInput, setCityInput] = useState('');
 
-  const getCityFromGeolocation = async (latitude: number, longitude: number) => {
+  const getCityFromGeolocation = async (latitude, longitude) => {
     try {
       const response = await fetch(
         `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}`
@@ -25,19 +25,19 @@ function App() {
       const data = await response.json();
       if (data.results && data.results[0]) {
         const { city, country } = data.results[0].components;
-        setCity({ name: city, country: country });
+        setCity({ name: city, country });
         setPosition([latitude, longitude]);
         fetchWeatherData(city);
       }
     } catch (error) {
-      console.error('Ошибка получения данных о городе:', error);
-      setError('Не удалось определить город');
+      console.error('Error fetching city data:', error);
+      setError('Unable to determine city');
     }
   };
 
-  const fetchWeatherData = async (cityName: string) => {
+  const fetchWeatherData = async (cityName) => {
     if (!import.meta.env.VITE_API_KEY) {
-      setError('Отсутствует ключ API');
+      setError('API key is missing');
       return;
     }
 
@@ -48,11 +48,9 @@ function App() {
       const weatherRes = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${import.meta.env.VITE_API_KEY}&units=metric&lang=ru`
       );
-      
       if (!weatherRes.ok) {
-        throw new Error('Город не найден');
+        throw new Error('City not found');
       }
-
       const weatherJson = await weatherRes.json();
 
       const forecastRes = await fetch(
@@ -61,41 +59,54 @@ function App() {
       const forecastJson = await forecastRes.json();
 
       setWeatherData({
-        temperature: weatherJson.main.temp,
-        feelsLike: weatherJson.main.feels_like,
-        pressure: weatherJson.main.pressure,
+        temperature: Math.round(weatherJson.main.temp),
+        feelsLike: Math.round(weatherJson.main.feels_like),
+        pressure: Math.round(weatherJson.main.pressure),
         precipitation: weatherJson.weather[0].description,
-        windSpeed: weatherJson.wind.speed,
+        windSpeed: Math.round(weatherJson.wind.speed),
         windDirection: getWindDirection(weatherJson.wind.deg),
         condition: getDynamicCondition(weatherJson.main.temp),
       });
+      
 
       const forecastDays = forecastJson.list
-        .filter((entry: any, index: number) => index % 8 === 0)
-        .map((entry: any) => ({
-          date: new Date(entry.dt * 1000).toLocaleDateString('ru-RU'),
-          dayName: new Date(entry.dt * 1000)
-            .toLocaleDateString('ru-RU', { weekday: 'long' })
-            .replace(/^[А-Я]/, (c) => c.toLowerCase()),
-          temperature: entry.main.temp,
-          minTemp: entry.main.temp_min,
+      .filter((entry: any, index: number) => index % 8 === 0)
+      .map((entry: any) => {
+        const date = new Date(entry.dt * 1000);
+        const dayNumber = date.getDay(); // 0 (воскресенье) - 6 (суббота)
+    
+        // Сдвиг, чтобы понедельник был первым днем
+        const adjustedDayNumber = (dayNumber === 0 ? 7 : dayNumber) - 1;
+    
+        const daysOfWeek = [
+          'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье',
+        ];
+    
+        return {
+          date: date.toLocaleDateString('ru-RU'),
+          dayName: daysOfWeek[adjustedDayNumber],
+          temperature: Math.round(entry.main.temp),
+          minTemp: Math.round(entry.main.temp_min),
           condition: getDynamicCondition(entry.main.temp),
-        }));
+        };
+      });
+    
+    
+
+      const hourlyData = forecastJson.list.map((entry: any) => ({
+        time: new Date(entry.dt * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        temperature: Math.round(entry.main.temp),
+        condition: getDynamicCondition(entry.main.temp),
+      }));
+      
 
       setForecast(forecastDays);
+      setHourlyForecast(hourlyData);
     } catch (error) {
-      setError('Не удалось загрузить данные о погоде');
-      console.error('Ошибка загрузки погоды:', error);
+      setError('Failed to load weather data');
+      console.error('Weather fetch error:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleCitySelect = () => {
-    const newCity = prompt('Введите название города:');
-    if (newCity) {
-      setCity({ name: newCity, country: '' });
-      fetchWeatherData(newCity);
     }
   };
 
@@ -107,21 +118,28 @@ function App() {
           getCityFromGeolocation(latitude, longitude);
         },
         (error) => {
-          console.error('Ошибка получения геолокации', error);
-          setError('Не удалось получить местоположение');
-          setCity({ name: '', country: '' });
+          console.error('Geolocation error', error);
+          setError('Unable to get location');
         }
       );
     } else {
-      setError('Геолокация не поддерживается браузером');
-      setCity({ name: '', country: '' });
+      setError('Geolocation is not supported by your browser');
     }
   }, []);
 
-  const getWindDirection = (deg: number): string => {
-    const directions = ['северный', 'северо-восточный', 'восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный'];
+  const getWindDirection = (deg) => {
+    const directions = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
     const index = Math.round(deg / 45) % 8;
     return directions[index];
+  };
+
+  const handleCityInput = (event) => {
+    const newCity = event.target.value;
+    setCityInput(newCity);
+    if (newCity.trim()) {
+      setCity({ name: newCity, country: '' });
+      fetchWeatherData(newCity);
+    }
   };
 
   return (
@@ -133,12 +151,13 @@ function App() {
             <h1 className="text-xl font-bold text-blue-900">React Weather</h1>
           </div>
           <div className="flex items-center gap-2">
-            {city && city.name && (
-              <p className="text-lg text-blue-800">
-                {city.name} {city.country && `, ${city.country}`}
-              </p>
-            )}
-            <CitySelector onSelectCity={handleCitySelect} />
+            <input
+              type="text"
+              value={cityInput}
+              onChange={handleCityInput}
+              placeholder="Choose a city"
+              className="border border-blue-300 px-4 py-2 rounded-lg"
+            />
           </div>
         </header>
 
@@ -158,6 +177,7 @@ function App() {
               <>
                 <CurrentWeather weatherData={weatherData} city={city} />
                 <WeatherForecast forecast={forecast} />
+                <HourlyWeather hourlyForecast={hourlyForecast} />
               </>
             )
           )}
